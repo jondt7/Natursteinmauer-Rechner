@@ -1,0 +1,381 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Info } from 'lucide-react';
+
+const TerrassenRechner = () => {
+  // Grundlegende Eingaben
+  const [laenge, setLaenge] = useState(4);
+  const [breite, setBreite] = useState(3);
+  const [plattenLaenge, setPlattenLaenge] = useState(0.4);
+  const [plattenBreite, setPlattenBreite] = useState(0.4);
+  const [fugenBreite, setFugenBreite] = useState(0.005);
+  
+  // Randsteine
+  const [mitRandsteinen, setMitRandsteinen] = useState(true);
+  const [randsteinLaenge, setRandsteinLaenge] = useState(1);
+  
+  // Optionen
+  const [verschnitt, setVerschnitt] = useState(10);
+  const [manuelleBerechnung, setManuelleBerechnung] = useState(false);
+  const [berechnungAngefordert, setBerechnungAngefordert] = useState(false);
+  
+  // Berechnete Werte
+  const [flaeche, setFlaeche] = useState(0);
+  const [umfang, setUmfang] = useState(0);
+  const [plattenAnzahl, setPlattenAnzahl] = useState(0);
+  const [plattenAnzahlMitVerschnitt, setPlattenAnzahlMitVerschnitt] = useState(0);
+  const [geschnittenePlatten, setGeschnittenePlatten] = useState(0);
+  const [randsteineAnzahl, setRandsteineAnzahl] = useState(0);
+  const [randsteineAnzahlMitVerschnitt, setRandsteineAnzahlMitVerschnitt] = useState(0);
+  
+  // Visualisierung
+  const [plattenGrid, setPlattenGrid] = useState([]);
+  
+  // Berechnung durchführen
+  const berechnen = () => {
+    // Fläche und Umfang berechnen
+    const berechneteFläche = laenge * breite;
+    const berechneterUmfang = 2 * (laenge + breite);
+    
+    setFlaeche(berechneteFläche);
+    setUmfang(berechneterUmfang);
+    
+    // Platten berechnen
+    const effektivePlattenBreite = plattenBreite + fugenBreite;
+    const effektivePlattenLaenge = plattenLaenge + fugenBreite;
+    
+    // Anzahl der Platten in X- und Y-Richtung
+    const plattenX = Math.ceil(laenge / effektivePlattenLaenge);
+    const plattenY = Math.ceil(breite / effektivePlattenBreite);
+    
+    const anzahlPlatten = plattenX * plattenY;
+    
+    // Grid für Visualisierung erstellen
+    const grid = Array(plattenY).fill().map(() => Array(plattenX).fill(1));
+    
+    // Geschnittene Platten am Rand identifizieren
+    let geschnittene = 0;
+    const restX = laenge % effektivePlattenLaenge;
+    const restY = breite % effektivePlattenBreite;
+    
+    if (restX > 0) {
+      for (let y = 0; y < plattenY; y++) {
+        grid[y][plattenX - 1] = 0.5; // markiere als geschnitten
+        geschnittene++;
+      }
+    }
+    
+    if (restY > 0) {
+      for (let x = 0; x < plattenX; x++) {
+        if (grid[plattenY - 1][x] === 0.5) {
+          grid[plattenY - 1][x] = 0.25; // Ecke, doppelt geschnitten
+        } else {
+          grid[plattenY - 1][x] = 0.5; // markiere als geschnitten
+          geschnittene++;
+        }
+      }
+    }
+    
+    setPlattenGrid(grid);
+    setPlattenAnzahl(anzahlPlatten);
+    setGeschnittenePlatten(geschnittene);
+    setPlattenAnzahlMitVerschnitt(Math.ceil(anzahlPlatten * (1 + verschnitt / 100)));
+    
+    // Randsteine berechnen, wenn gewünscht
+    if (mitRandsteinen) {
+      const anzahlRandsteine = Math.ceil(berechneterUmfang / randsteinLaenge);
+      const randsteinVerschnitt = Math.max(5, verschnitt / 2);
+      const anzahlMitVerschnitt = Math.ceil(anzahlRandsteine * (1 + randsteinVerschnitt / 100));
+      
+      setRandsteineAnzahl(anzahlRandsteine);
+      setRandsteineAnzahlMitVerschnitt(anzahlMitVerschnitt);
+    } else {
+      setRandsteineAnzahl(0);
+      setRandsteineAnzahlMitVerschnitt(0);
+    }
+    
+    setBerechnungAngefordert(false);
+  };
+  
+  // Automatische oder manuelle Berechnung
+  useEffect(() => {
+    if (!manuelleBerechnung || berechnungAngefordert) {
+      berechnen();
+    }
+  }, [laenge, breite, plattenLaenge, plattenBreite, fugenBreite, mitRandsteinen, 
+      randsteinLaenge, verschnitt, manuelleBerechnung, berechnungAngefordert]);
+  
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6 text-center">Terrassenrechner für Galabauer</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Eingaben */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Terrassenmaße</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-1 font-medium">Länge (m)</label>
+                <input 
+                  type="number" 
+                  min="0.5" 
+                  step="0.1" 
+                  value={laenge} 
+                  onChange={(e) => setLaenge(Number(e.target.value))}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 font-medium">Breite (m)</label>
+                <input 
+                  type="number" 
+                  min="0.5" 
+                  step="0.1" 
+                  value={breite} 
+                  onChange={(e) => setBreite(Number(e.target.value))}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              
+              <div className="p-3 bg-gray-50 rounded">
+                <p className="font-medium text-sm mb-2">Terrassenplatten:</p>
+                <div className="mb-2">
+                  <label className="block mb-1 text-sm">Plattenlänge (m)</label>
+                  <input 
+                    type="number" 
+                    min="0.1" 
+                    step="0.01" 
+                    value={plattenLaenge} 
+                    onChange={(e) => setPlattenLaenge(Number(e.target.value))}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="block mb-1 text-sm">Plattenbreite (m)</label>
+                  <input 
+                    type="number" 
+                    min="0.1" 
+                    step="0.01" 
+                    value={plattenBreite} 
+                    onChange={(e) => setPlattenBreite(Number(e.target.value))}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm">Fugenbreite (m)</label>
+                  <input 
+                    type="number" 
+                    min="0.001" 
+                    step="0.001" 
+                    value={fugenBreite} 
+                    onChange={(e) => setFugenBreite(Number(e.target.value))}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Weitere Optionen */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Optionen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  id="mitRandsteinen" 
+                  checked={mitRandsteinen} 
+                  onChange={() => setMitRandsteinen(!mitRandsteinen)}
+                  className="mr-2"
+                />
+                <label htmlFor="mitRandsteinen" className="text-sm font-medium">
+                  Mit Randsteinen/Einfassung
+                </label>
+              </div>
+              
+              {mitRandsteinen && (
+                <div className="p-3 bg-amber-50 rounded">
+                  <p className="font-medium text-sm mb-2">Randsteine:</p>
+                  <div>
+                    <label className="block mb-1 text-sm">Länge (m)</label>
+                    <input 
+                      type="number" 
+                      min="0.1" 
+                      step="0.01" 
+                      value={randsteinLaenge} 
+                      onChange={(e) => setRandsteinLaenge(Number(e.target.value))}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <label className="block mb-1 font-medium">Verschnitt (%)</label>
+                <div className="flex items-center">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="20" 
+                    step="1" 
+                    value={verschnitt} 
+                    onChange={(e) => setVerschnitt(Number(e.target.value))}
+                    className="w-full mr-2"
+                  />
+                  <span>{verschnitt}%</span>
+                </div>
+              </div>
+              
+              <div className="flex mt-4 items-center">
+                <input 
+                  type="checkbox" 
+                  id="manuelleBerechnung" 
+                  checked={manuelleBerechnung} 
+                  onChange={() => setManuelleBerechnung(!manuelleBerechnung)}
+                  className="mr-2"
+                />
+                <label htmlFor="manuelleBerechnung" className="text-sm font-medium">
+                  Manuelle Berechnung
+                </label>
+              </div>
+              
+              <button 
+                onClick={() => setBerechnungAngefordert(true)} 
+                className="mt-4 w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                disabled={!manuelleBerechnung}
+              >
+                Berechnen
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Ergebnisse */}
+      <Card className="bg-blue-50 mb-6">
+        <CardHeader>
+          <CardTitle>Berechnete Ergebnisse</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex justify-between p-2 bg-white rounded shadow">
+                <span className="font-medium">Terrassen-Fläche:</span>
+                <span>{flaeche.toFixed(2)} m²</span>
+              </div>
+              <div className="flex justify-between p-2 bg-white rounded shadow">
+                <span className="font-medium">Umfang:</span>
+                <span>{umfang.toFixed(2)} m</span>
+              </div>
+              <div className="flex justify-between p-2 bg-white rounded shadow">
+                <span className="font-medium">Platten (netto):</span>
+                <span>{plattenAnzahl} Stück</span>
+              </div>
+              <div className="flex justify-between p-2 bg-white rounded shadow">
+                <span className="font-medium">Davon geschnitten:</span>
+                <span>{geschnittenePlatten} Stück</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between p-2 bg-white rounded shadow font-bold">
+                <span>Platten inkl. {verschnitt}% Verschnitt:</span>
+                <span>{plattenAnzahlMitVerschnitt} Stück</span>
+              </div>
+              
+              {mitRandsteinen && (
+                <>
+                  <div className="flex justify-between p-2 bg-white rounded shadow">
+                    <span className="font-medium">Randsteine (netto):</span>
+                    <span>{randsteineAnzahl} Stück</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-white rounded shadow">
+                    <span className="font-medium">Randsteine inkl. Verschnitt:</span>
+                    <span>{randsteineAnzahlMitVerschnitt} Stück</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          
+          <div className="mt-4 flex items-start p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <Info className="text-yellow-500 mr-2 flex-shrink-0 mt-1" size={20} />
+            <p className="text-sm">
+              Die berechneten Werte dienen als Richtwerte. Die Visualisierung zeigt, wo Platten geschnitten werden müssen 
+              (gelb markiert). Für komplexe Formen oder spezielle Verlegemuster empfiehlt sich eine detailliertere Planung.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Visualisierung */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Visualisierung</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-gray-100 p-4 rounded border relative" style={{ height: '300px' }}>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div 
+                style={{ 
+                  width: `${Math.min(laenge * 50, 250)}px`, 
+                  height: `${Math.min(breite * 50, 200)}px`, 
+                  backgroundColor: '#e6c08f',
+                  border: mitRandsteinen ? '8px solid #a1a1a1' : 'none',
+                  position: 'relative'
+                }}
+              >
+                {/* Plattengrid für Visualisierung */}
+                {plattenGrid.map((row, rowIndex) => (
+                  <div key={rowIndex} style={{ display: 'flex', height: `${Math.min((breite / plattenGrid.length) * 50, 200 / plattenGrid.length)}px` }}>
+                    {row.map((cell, cellIndex) => (
+                      <div 
+                        key={cellIndex} 
+                        style={{
+                          width: `${Math.min((laenge / row.length) * 50, 250 / row.length)}px`,
+                          height: '100%',
+                          backgroundColor: cell === 1 ? '#e6c08f' : 
+                                         cell === 0.5 ? '#ffd700' : 
+                                         cell === 0.25 ? '#ff6347' : 'transparent',
+                          border: '1px solid rgba(0,0,0,0.2)',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Legende */}
+            <div className="absolute top-2 right-2 bg-white p-2 rounded border text-xs">
+              <div className="flex items-center mb-1">
+                <div className="w-4 h-4 mr-2" style={{ backgroundColor: '#e6c08f' }}></div>
+                <span>Ganze Platten</span>
+              </div>
+              <div className="flex items-center mb-1">
+                <div className="w-4 h-4 mr-2" style={{ backgroundColor: '#ffd700' }}></div>
+                <span>Geschnittene Platten</span>
+              </div>
+              {mitRandsteinen && (
+                <div className="flex items-center">
+                  <div className="w-4 h-4 mr-2" style={{ backgroundColor: '#a1a1a1' }}></div>
+                  <span>Randsteine</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default TerrassenRechner;
